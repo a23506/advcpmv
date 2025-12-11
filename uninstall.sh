@@ -66,39 +66,24 @@ echo -e "${YELLOW}>>> 尝试重新加载 shell 配置 ...${RESET}"
 source "$PROFILE" 2>/dev/null || true
 
 # ===============================
-# Detect whether cp is advcp
+# Detect whether cp is advcp (final correct logic)
 # ===============================
 echo -e "${YELLOW}>>> 检测 cp 是否已切换为 advcp ...${RESET}"
 
 CP_HELP_OUTPUT=$(cp -h 2>&1 || true)
 
-# Case 1 — advcp help 或错误输出：包含 "/usr/local/bin/advcp"
-if echo "$CP_HELP_OUTPUT" | grep -q "/usr/local/bin/advcp"; then
-    echo -e "${GREEN}>>> SUCCESS：cp 已成功切换为 advcp（带进度条）${RESET}"
+if echo "$CP_HELP_OUTPUT" | grep -qi "advcp"; then
+    echo -e "${GREEN}>>> SUCCESS：cp 已成功切换为 advcp${RESET}"
     SHELL_RELOAD_REQUIRED=0
 
-# Case 2 — 系统 cp help：包含 "Try 'cp"
 elif echo "$CP_HELP_OUTPUT" | grep -q "Try 'cp"; then
     echo -e "${RED}>>> WARNING：当前 cp 仍为系统默认版本${RESET}"
     echo -e "${YELLOW}>>> 请退出 SSH / 终端重新登录使 alias 生效${RESET}"
     SHELL_RELOAD_REQUIRED=1
 
-# Case 3 — cp -h 返回错误（BusyBox / advcp 不支持 -h）
-elif echo "$CP_HELP_OUTPUT" | grep -qi "invalid option"; then
-    # 判断是否为 advcp 报错
-    if echo "$CP_HELP_OUTPUT" | grep -q "/usr/local/bin/advcp"; then
-        echo -e "${GREEN}>>> SUCCESS：cp 已由 advcp 接管（虽然 -h 不支持，但已生效）${RESET}"
-        SHELL_RELOAD_REQUIRED=0
-    else
-        echo -e "${RED}>>> WARNING：检测失败，可能仍是系统 cp${RESET}"
-        echo -e "${YELLOW}>>> 请重新登录终端后再试${RESET}"
-        SHELL_RELOAD_REQUIRED=1
-    fi
-
-# Case 4 — 未知输出，进一步提醒
 else
-    echo -e "${RED}>>> 检测失败：无法判断 cp 是否已被替换${RESET}"
-    echo -e "${YELLOW}>>> 请执行： type cp${RESET}"
+    echo -e "${RED}>>> WARNING：无法确定 cp 状态（可能为 BusyBox 或特殊输出）${RESET}"
+    echo -e "${YELLOW}>>> 建议执行： type cp${RESET}"
     SHELL_RELOAD_REQUIRED=1
 fi
 
