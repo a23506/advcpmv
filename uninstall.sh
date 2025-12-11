@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ===============================
-#   颜色定义
+#  颜色定义
 # ===============================
 RED="\033[31m"
 GREEN="\033[32m"
@@ -13,10 +13,10 @@ echo -e "${BLUE}>>> advcpmv 一键安装脚本开始运行...${RESET}"
 
 set -e
 
-# 仓库地址（你现在用的是 master 分支，就按你这个来）
-REPO_URL="https://raw.githubusercontent.com/a23506/advcpmv/master"
+# 仓库地址（你仓库里 advcp/advmv 在 main 分支）
+REPO_URL="https://raw.githubusercontent.com/a23506/advcpmv/main"
 BIN_DIR="/usr/local/bin"
-CUR_DIR=$(pwd)
+CUR_DIR="$(pwd)"
 
 # ===============================
 # 选择要写入的 shell 配置文件
@@ -30,14 +30,16 @@ fi
 echo -e "${YELLOW}>>> 使用的 shell 配置文件：${PROFILE}${RESET}"
 
 # ===============================
-# 下载 advcp 和 advmv
+# 如果本地已有 advcp/advmv，则跳过下载
 # ===============================
-echo -e "${YELLOW}>>> 下载 advcp 和 advmv ...${RESET}"
-
-curl -fsSL "$REPO_URL/advcp" -o "$CUR_DIR/advcp"
-curl -fsSL "$REPO_URL/advmv" -o "$CUR_DIR/advmv"
-
-chmod +x "$CUR_DIR/advcp" "$CUR_DIR/advmv"
+if [ -x "$CUR_DIR/advcp" ] && [ -x "$CUR_DIR/advmv" ]; then
+    echo -e "${YELLOW}>>> 检测到当前目录已存在 advcp 和 advmv，跳过下载步骤${RESET}"
+else
+    echo -e "${YELLOW}>>> 下载 advcp 和 advmv ...${RESET}"
+    curl -fsSL "$REPO_URL/advcp" -o "$CUR_DIR/advcp"
+    curl -fsSL "$REPO_URL/advmv" -o "$CUR_DIR/advmv"
+    chmod +x "$CUR_DIR/advcp" "$CUR_DIR/advmv"
+fi
 
 # ===============================
 # 安装到 /usr/local/bin
@@ -64,38 +66,37 @@ fi
 
 echo -e "${GREEN}>>> alias 设置完成${RESET}"
 
-# ===============================
-# 尝试重新加载配置（能生效就生效一下）
-# ===============================
+# 尽量在当前 shell 内加载一下（对当前脚本其实用处不大，但留着无害）
 echo -e "${YELLOW}>>> 尝试重新加载 shell 配置 ...${RESET}"
-# 有些环境 source 会失败，这里不影响后续逻辑，所以 2>/dev/null || true
+# 非交互 shell 默认不展开 alias，这里只是为了后续你自己在这个 shell 里手动用
 source "$PROFILE" 2>/dev/null || true
 
 # ===============================
-# 用 cp -h 来检测是否已切换为 advcp
+# 用你指定的“cp -h 回显”规则来检测
+# 但！！！在一个新的交互式 bash 里跑，保证 alias 生效
 # ===============================
 echo -e "${YELLOW}>>> 检测 cp 是否已切换为 advcp ...${RESET}"
 
-CP_HELP_OUTPUT=$(cp -h 2>&1 || true)
+CP_HELP_OUTPUT="$(bash -ic 'cp -h 2>&1' 2>/dev/null || true)"
 
-# Debug 输出一行（如果你不想看可以删掉这一行）
-# echo "DEBUG: cp -h output is: $CP_HELP_OUTPUT"
+# DEBUG 输出来看一下实际字符串（如果你不想看就注释掉这一行）
+# echo "DEBUG: cp -h output: $CP_HELP_OUTPUT"
 
-# 规则 1：如果包含 “Try '/usr/local/bin/advcp” —— 判定为成功
+# 规则 1：如果 cp -h 回显包含 “Try '/usr/local/bin/advcp” => 配置成功
 if echo "$CP_HELP_OUTPUT" | grep -q "Try '/usr/local/bin/advcp"; then
-    echo -e "${GREEN}>>> SUCCESS：cp 已成功切换为 advcp（带进度条版本）${RESET}"
+    echo -e "${GREEN}>>> SUCCESS：cp 已成功切换为 advcp${RESET}"
     SHELL_RELOAD_REQUIRED=0
 
-# 规则 2：如果包含 “Try 'cp” —— 判定为系统原生 cp
+# 规则 2：如果 cp -h 回显包含 “Try 'cp” => 提示需要重新登录
 elif echo "$CP_HELP_OUTPUT" | grep -q "Try 'cp"; then
-    echo -e "${RED}>>> WARNING：当前 cp 仍为系统默认版本${RESET}"
-    echo -e "${YELLOW}>>> 请退出 SSH / 终端重新登录使 alias 生效${RESET}"
+    echo -e "${RED}>>> WARNING：当前 cp 仍然是系统默认版本${RESET}"
+    echo -e "${YELLOW}>>> 请退出 SSH / 终端重新登录后，再执行 cp -h 检查${RESET}"
     SHELL_RELOAD_REQUIRED=1
 
-# 规则 3：其他情况（比如 cp -h 报错、不认识的格式等）
+# 规则 3：其它情况（cp -h 不支持 / 输出异常）
 else
-    echo -e "${RED}>>> WARNING：无法准确判断 cp 状态${RESET}"
-    echo -e "${YELLOW}>>> 请手动执行： type cp${RESET}"
+    echo -e "${RED}>>> WARNING：无法根据 cp -h 的输出判断当前状态${RESET}"
+    echo -e "${YELLOW}>>> 建议你自己执行：cp -h 和 type cp 看看${RESET}"
     SHELL_RELOAD_REQUIRED=1
 fi
 
@@ -118,13 +119,12 @@ rm -f /tmp/passwd_test
 # 总结输出
 # ===============================
 echo -e "${BLUE}====================================================${RESET}"
-echo -e "${GREEN}>>> advcpmv 安装已完成${RESET}"
+echo -e "${GREEN}>>> advcpmv 安装步骤执行完毕${RESET}"
 
 if [ "$SHELL_RELOAD_REQUIRED" -eq 1 ]; then
-    echo -e "${YELLOW}>>> 当前检测结果：cp 可能还未切换或无法确定${RESET}"
-    echo -e "${YELLOW}>>> 建议：退出终端重新登录，或手动执行： type cp${RESET}"
+    echo -e "${YELLOW}>>> 根据检测结果：可能还需要重新登录终端才能完全生效${RESET}"
 else
-    echo -e "${GREEN}>>> 当前检测结果：cp/mv 已成功替换为 advcp/advmv${RESET}"
+    echo -e "${GREEN}>>> 根据检测结果：cp/mv 已成功切换为 advcp/advmv${RESET}"
 fi
 
 echo -e "${BLUE}====================================================${RESET}"
