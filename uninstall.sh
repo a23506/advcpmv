@@ -13,11 +13,11 @@ echo -e "${BLUE}>>> advcpmv 一键安装脚本开始运行...${RESET}"
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/a23506/advcpmv/main"
+REPO_URL="https://raw.githubusercontent.com/a23506/advcpmv/master"
 BIN_DIR="/usr/local/bin"
 CUR_DIR=$(pwd)
 
-# Detect correct profile file
+# Detect correct shell profile
 if [ "$EUID" -eq 0 ]; then
     PROFILE="/root/.bashrc"
 else
@@ -37,7 +37,7 @@ curl -fsSL "$REPO_URL/advmv" -o "$CUR_DIR/advmv"
 chmod +x "$CUR_DIR/advcp" "$CUR_DIR/advmv"
 
 # ===============================
-# Install binaries
+# Install to /usr/local/bin
 # ===============================
 echo -e "${YELLOW}>>> 安装到 ${BIN_DIR} ...${RESET}"
 
@@ -61,30 +61,49 @@ fi
 
 echo -e "${GREEN}>>> alias 设置完成${RESET}"
 
-# Reload profile if possible
+# Reload profile (best-effort)
 echo -e "${YELLOW}>>> 尝试重新加载 shell 配置 ...${RESET}"
 source "$PROFILE" 2>/dev/null || true
 
 # ===============================
-# Real detection: cp replaced?
+# Detect whether cp is advcp
 # ===============================
 echo -e "${YELLOW}>>> 检测 cp 是否已切换为 advcp ...${RESET}"
 
-# Run version check (works for all Linux)
-CP_VERSION=$(cp --version 2>&1 || true)
+CP_HELP_OUTPUT=$(cp -h 2>&1 || true)
 
-if echo "$CP_VERSION" | grep -qi "advc"; then
-    echo -e "${GREEN}>>> SUCCESS：cp 已成功替换为 advcp（进度条版本）${RESET}"
+# Case 1 — advcp help 或错误输出：包含 "/usr/local/bin/advcp"
+if echo "$CP_HELP_OUTPUT" | grep -q "/usr/local/bin/advcp"; then
+    echo -e "${GREEN}>>> SUCCESS：cp 已成功切换为 advcp（带进度条）${RESET}"
     SHELL_RELOAD_REQUIRED=0
+
+# Case 2 — 系统 cp help：包含 "Try 'cp"
+elif echo "$CP_HELP_OUTPUT" | grep -q "Try 'cp"; then
+    echo -e "${RED}>>> WARNING：当前 cp 仍为系统默认版本${RESET}"
+    echo -e "${YELLOW}>>> 请退出 SSH / 终端重新登录使 alias 生效${RESET}"
+    SHELL_RELOAD_REQUIRED=1
+
+# Case 3 — cp -h 返回错误（BusyBox / advcp 不支持 -h）
+elif echo "$CP_HELP_OUTPUT" | grep -qi "invalid option"; then
+    # 判断是否为 advcp 报错
+    if echo "$CP_HELP_OUTPUT" | grep -q "/usr/local/bin/advcp"; then
+        echo -e "${GREEN}>>> SUCCESS：cp 已由 advcp 接管（虽然 -h 不支持，但已生效）${RESET}"
+        SHELL_RELOAD_REQUIRED=0
+    else
+        echo -e "${RED}>>> WARNING：检测失败，可能仍是系统 cp${RESET}"
+        echo -e "${YELLOW}>>> 请重新登录终端后再试${RESET}"
+        SHELL_RELOAD_REQUIRED=1
+    fi
+
+# Case 4 — 未知输出，进一步提醒
 else
-    echo -e "${RED}>>> WARNING：cp 仍是系统默认版本${RESET}"
-    echo -e "${YELLOW}>>> 请退出 SSH / 终端并重新登录以使 alias 生效${RESET}"
-    echo -e "${YELLOW}>>> 或执行： source ${PROFILE}${RESET}"
+    echo -e "${RED}>>> 检测失败：无法判断 cp 是否已被替换${RESET}"
+    echo -e "${YELLOW}>>> 请执行： type cp${RESET}"
     SHELL_RELOAD_REQUIRED=1
 fi
 
 # ===============================
-# File copy test
+# Copy test
 # ===============================
 echo -e "${YELLOW}>>> 测试文件复制功能 ...${RESET}"
 
@@ -93,7 +112,7 @@ cp /etc/passwd /tmp/passwd_test 2>/dev/null || true
 if [ -f /tmp/passwd_test ]; then
     echo -e "${GREEN}>>> 文件复制测试成功！（/tmp/passwd_test）${RESET}"
 else
-    echo -e "${RED}>>> 文件复制失败，请检查 advcp 是否可用${RESET}"
+    echo -e "${RED}>>> 文件复制失败，请检查 advcp 是否正常运行${RESET}"
 fi
 
 rm -f /tmp/passwd_test
@@ -105,7 +124,7 @@ echo -e "${BLUE}====================================================${RESET}"
 echo -e "${GREEN}>>> advcpmv 安装已完成${RESET}"
 
 if [ "$SHELL_RELOAD_REQUIRED" -eq 1 ]; then
-    echo -e "${YELLOW}>>> alias 尚未生效：请退出终端重新登录！${RESET}"
+    echo -e "${YELLOW}>>> alias 尚未生效：请退出终端重新登录${RESET}"
 else
     echo -e "${GREEN}>>> cp/mv 已成功替换为 advcp/advmv${RESET}"
 fi
