@@ -17,7 +17,7 @@ REPO_URL="https://raw.githubusercontent.com/a23506/advcpmv/main"
 BIN_DIR="/usr/local/bin"
 CUR_DIR=$(pwd)
 
-# Detect correct bash profile (root uses /root)
+# Detect correct profile (for root or normal user)
 if [ "$EUID" -eq 0 ]; then
     PROFILE="/root/.bashrc"
 else
@@ -27,7 +27,7 @@ fi
 echo -e "${YELLOW}>>> 使用的 shell 配置文件：${PROFILE}${RESET}"
 
 # ===============================
-# Download binaries
+# Download advcp & advmv
 # ===============================
 echo -e "${YELLOW}>>> 下载 advcp 和 advmv ...${RESET}"
 
@@ -37,7 +37,7 @@ curl -fsSL "$REPO_URL/advmv" -o "$CUR_DIR/advmv"
 chmod +x "$CUR_DIR/advcp" "$CUR_DIR/advmv"
 
 # ===============================
-# Install binaries
+# Install into /usr/local/bin
 # ===============================
 echo -e "${YELLOW}>>> 安装到 ${BIN_DIR} ...${RESET}"
 
@@ -47,7 +47,7 @@ sudo cp "$CUR_DIR/advmv" "$BIN_DIR/"
 echo -e "${GREEN}>>> 安装成功！${RESET}"
 
 # ===============================
-# Write alias to shell profile
+# Write alias into profile
 # ===============================
 echo -e "${YELLOW}>>> 写入 alias 到 ${PROFILE} ...${RESET}"
 
@@ -61,31 +61,31 @@ fi
 
 echo -e "${GREEN}>>> alias 设置完成${RESET}"
 
-# Try to reload shell config
+# Try to reload profile
 echo -e "${YELLOW}>>> 尝试重新加载 shell 配置 ...${RESET}"
 source "$PROFILE" 2>/dev/null || true
 
 # ===============================
-# Check if cp is switched
+# Check cp has switched to advcp
 # ===============================
 echo -e "${YELLOW}>>> 检测 cp 是否已切换为 advcp ...${RESET}"
 
-CP_HELP_OUTPUT=$(cp -h 2>&1)
+CP_HELP_OUTPUT=$(cp --help 2>&1)
 
-if echo "$CP_HELP_OUTPUT" | grep -q "Try '/usr/local/bin/advcp"; then
-    echo -e "${GREEN}>>> SUCCESS：cp 已成功替换为 advcp${RESET}"
+if echo "$CP_HELP_OUTPUT" | grep -q "/usr/local/bin/advcp"; then
+    echo -e "${GREEN}>>> SUCCESS：cp 已成功替换为 advcp（进度条版本）${RESET}"
     SHELL_RELOAD_REQUIRED=0
 else
     echo -e "${RED}>>> WARNING：当前 cp 仍然是系统默认版本${RESET}"
-    echo -e "${YELLOW}>>> 需要退出当前终端并重新登录后，cp 才会切换为 advcp${RESET}"
+    echo -e "${YELLOW}>>> 需要退出当前 SSH/终端重新登录后生效${RESET}"
     echo -e "${YELLOW}>>> 或手动执行： source ${PROFILE}${RESET}"
     SHELL_RELOAD_REQUIRED=1
 fi
 
 # ===============================
-# Test copying functionality
+# Copy test
 # ===============================
-echo -e "${YELLOW}>>> 测试文件复制 ...${RESET}"
+echo -e "${YELLOW}>>> 测试文件复制功能 ...${RESET}"
 
 cp /etc/passwd /tmp/passwd_test 2>/dev/null || true
 
@@ -98,17 +98,15 @@ fi
 rm -f /tmp/passwd_test
 
 # ===============================
-# Summary
+# Final Summary
 # ===============================
-
 echo -e "${BLUE}====================================================${RESET}"
-echo -e "${GREEN}>>> advcpmv 安装步骤已完成${RESET}"
+echo -e "${GREEN}>>> advcpmv 安装完成${RESET}"
 
 if [ "$SHELL_RELOAD_REQUIRED" -eq 1 ]; then
-    echo -e "${YELLOW}>>> 但 alias 尚未生效：需要重新登录当前终端！${RESET}"
-    echo -e "${YELLOW}>>> 或执行： source ${PROFILE}${RESET}"
+    echo -e "${YELLOW}>>> alias 尚未生效：请退出当前终端重新登录！${RESET}"
 else
-    echo -e "${GREEN}>>> cp/mv 已替换为 advcp/advmv（带进度条版本）${RESET}"
+    echo -e "${GREEN}>>> cp/mv 已成功替换为 advcp/advmv${RESET}"
 fi
 
 echo -e "${BLUE}====================================================${RESET}"
