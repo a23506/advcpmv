@@ -25,7 +25,8 @@
 无需手动下载，只需执行下面一条命令：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/a23506/advcpmv/master/install.sh)
+curl -fsSL https://raw.githubusercontent.com/a23506/advcpmv/master/install.sh -o /tmp/advcpmv-install.sh && bash /tmp/advcpmv-install.sh
+
 ````
 
 
