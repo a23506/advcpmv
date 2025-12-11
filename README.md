@@ -20,7 +20,14 @@
 
 ---
 
-## 📥 安装方法（推荐）
+## 🚀 一键安装（推荐）
+
+无需手动下载，只需执行下面一条命令：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/a23506/advcpmv/master/install.sh)
+````
+
 
 通过仓库自带脚本一键安装：
 
